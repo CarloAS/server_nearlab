@@ -1,1 +1,2 @@
-# NODS
+# NODS (Nitric Oxide Diffusion Simulator)
+
