@@ -6,15 +6,15 @@ import time
 import nest
 from nods.core import NODS
 from utils import *
-import pickle
-
+import h5py
 
 class SimulateEBCC:
-    def __init__(self, data_path="/home/csartor1/code/NODS/data/") -> None:
+    def __init__(self, data_path="/home/csartor1/code/NODS/data/", save_folder = os.path.dirname(os.path.abspath(__file__))) -> None:
         self.data_path = data_path
         self.dt_sim = 10
         params_filename = "model_parameters.json"
         root_path = "./nods"
+        self.save_folder = save_folder
         with open('/home/csartor1/code/NODS/nods/model_parameters.json', "r") as read_file:
             self.params = json.load(read_file)
         pass
@@ -50,6 +50,7 @@ class SimulateEBCC:
                 "rng_seeds": msdrange2,
                 "local_num_threads": CORES,
                 "total_num_virtual_procs": CORES,
+                "data_path": self.save_folder
             }
         )
         nest.set_verbosity("M_ERROR")  # reduce plotted info
@@ -551,7 +552,7 @@ class SimulateEBCC:
     def initialize_nods(self, file_relative_dist = None, file_ev_points = None, file_nNOS = None):
         t0 = time.time()
         simulation_file = "NO_simulation.p"
-        nods_sim = NODS(self.params)
+        nods_sim = NODS(self.params, save_folder=self.save_folder)
 
         nNOS_coordinates = self.NO_sources_geometry()
         print("Initialize nods")
@@ -584,34 +585,34 @@ class SimulateEBCC:
             t = time.time() - t0
             print("Time: ", t)
 
-    def simulate_network_with_NO(self, nods_sim) -> None:
+    def simulate_network_with_NO(self, nods_sim, save_no = None) -> None:
         print("simulate with NO")
         print("Single trial length: ", self.between_start)
-        with open(self.data_path + "pfs-PC_prova.pkl", "rb") as file:
-            pfs = pickle.load(file)
+        with open(self.data_path + "pf-PC.hdf5", "rb") as file:
+            pfs = h5py.File(file, "r")["pf_pc_connections"][:]
         dt_sim = self.dt_sim
         for t in range(0,self.n_trials * self.between_start,dt_sim):
-            #print('simulate 5 ms', flush = True)
+            
             nest.Simulate(dt_sim)
             time.sleep(0.01)
-            #print('Get Status', flush=True)
+            
             events = nest.GetStatus(self.spikedetector_granule_cell, "events")[0]
             ID_cell = events["senders"]
             times = events["times"]
-            #print('take active sources', flush=True)
+            
             ind_active_sources_get = np.where((times>(t-5)) & (times<=t))[0]
             active_sources_get = ID_cell[ind_active_sources_get]
             times_spikes = np.array(times[ind_active_sources_get])-t
-            #print('sim EBCC: evaluate diffusion', flush=True)
-            nods_sim.evaluate_diffusion(active_sources_get, t, times_spikes, dt_sim)
+            
+            nods_sim.evaluate_diffusion(active_sources_get, t, times_spikes, dt_sim, save_no)
             
             list_dict = []
             for i,pf in enumerate(pfs):
                 meta_l_update = float(sig(x=nods_sim.NO_in_ev_points[i], A=1, B=60))
-                #nest.SetStatus([pf], {"meta_l": meta_l_update})
+                
                 list_dict.append({"meta_l": meta_l_update})
-                #print([pf , meta_l_update], flush=True) 
-            nest.SetStatus(pfs, list_dict)
+                
+            nest.SetStatus(tuple(pfs), list_dict)
 
     def plot_cell_activity_over_trials(self, cell, step):
         import matplotlib.pyplot as plt

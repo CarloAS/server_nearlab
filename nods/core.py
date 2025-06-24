@@ -7,7 +7,7 @@ import os
 import time
 
 class NODS:
-    def __init__(self,model_parameters):
+    def __init__(self,model_parameters, save_folder = os.path.dirname(os.path.abspath(__file__))):
         self.tauCa   = model_parameters['production']['tauCa']
         self.tauNOS1 = model_parameters['production']['tauNOS1']
         self.tauNOS2 = model_parameters['production']['tauNOS2']
@@ -28,6 +28,7 @@ class NODS:
         self.Calm2C_0   = model_parameters['simulation']['Calm2C_0']
         self.nNOS_0     = model_parameters['simulation']['nNOS_0']
         self.NO_p_0     = model_parameters['simulation']['NO_p_0']
+        self.save_folder = save_folder
 
     def init_geometry(self, nNOS_coordinates, ev_point_coordinates, source_ids, nos_ids = None, cluster_nos_ids=None, ev_point_ids = None, cluster_ev_point_ids=None, file_ev_points = None, file_nNOS = None, file_relative_dist = None):
 
@@ -86,7 +87,6 @@ class NODS:
             }
             ev_point_ids = df['ev_points_id'].values
             ev_point_ids = np.array(ev_point_ids, dtype=int)
-
         self.sort_sources(all_nNOS, ev_points,file_relative_dist)
         self.no_conc = np.zeros(len(ev_point_ids))
         df = pd.DataFrame.from_dict(all_nNOS, orient='index').reset_index()
@@ -154,7 +154,7 @@ class NODS:
         dill.dump(self, open(simulation_file, "wb"))
         return 
         
-    def evaluate_diffusion(self,active_sources,t, times_spikes, dt_sim):
+    def evaluate_diffusion(self,active_sources,t, times_spikes, dt_sim, save_no = None):
 
         source_data = self.NO_from_source
         source_to_eval = self.source_to_eval
@@ -168,6 +168,14 @@ class NODS:
         r_max = self.r_max
         ds = self.ds
         NO_in_ev_points = self.NO_in_ev_points
+        if save_no == True:
+            output_folder = "NO_concentration_data/"
+            NO_concentration_folder = os.path.join(self.save_folder, output_folder)
+            if not os.path.exists(NO_concentration_folder):
+                    os.makedirs(NO_concentration_folder)
+            file_name = f"NO_concentration_t_{t}.csv"
+            file_path = os.path.join(NO_concentration_folder, file_name)
+
         for source_id in source_to_eval:
             source = source_data[source_id]
             t_spike = np.array(times_spikes[active_sources==source_id],dtype = int)
@@ -195,7 +203,6 @@ class NODS:
                 'u': u,
                 'NO_diffused_tf': NO
             })
-        
         current_ev_points_id = int(self.relative_dist[0][2])
         current_contribution_sum = 0
         contributions_to_file = []
@@ -220,7 +227,9 @@ class NODS:
 
         NO_in_ev_points[current_ev_points_id] = current_contribution_sum
         contributions_to_file.append([current_ev_points_id, current_contribution_sum])
-
+        if save_no == True:
+            df_no_conc = pd.DataFrame(contributions_to_file)
+            df_no_conc.to_csv(file_path,header=False)
         return
 
 def Production_function(dt,Ca_spike,Calm2C_old,nNOS_old,tauCa,tauNOS1,tauNOS2,A):

@@ -9,15 +9,17 @@ import gc
 condition = input("Select condition: wo_NO or w_NO --> ")
 noise_rate = input("Select noise rate (Hz): ")
 sim_id = input("Simulation ID: ")
+string_no = input("Save NO concentration across simulation (True or False): ") #if true saves all [NO] for all ev_points
+save_no = True if string_no.lower() == "true" else False
 
-data_path = "/home/csartor1/code/NODS/data/"
+data_path = "/home/csartor1/code/nearlab_repo/NODS/data/"
 
 file_rel_dist = os.path.join(data_path,'relative_dist.csv')
 file_ev_points = os.path.join(data_path, "reshaped_ev_points.csv")
 file_nNOS = os.path.join(data_path, "nNOS_dict.csv")
 
 source_folder = "/home/csartor1/code/NODS/"
-destination_folder = "/results"
+destination_folder = "/home/csartor1/code/nearlab_repo/NODS/results/"
 file_prefixes = [
     "pc_spikes",
     "granule_spikes",
@@ -25,7 +27,9 @@ file_prefixes = [
     "pf-PC",
     "aa_",
 ]
-destination_folder = os.path.join(destination_folder, condition, noise_rate, sim_id)
+destination_folder = os.path.join(destination_folder, condition, noise_rate+'Hz', sim_id)
+noise_rate = float(noise_rate)
+print(destination_folder)
 os.makedirs(destination_folder, exist_ok=True)
 nest.Install("cerebmodule")
 
@@ -36,7 +40,7 @@ if condition == "wo_NO":
     simulation_description = f"EBCC with A_minus, A_plus= {A_minus},{A_plus}, {condition}"
     print(simulation_description)
     vt_modality = "1_vt_PC" 
-    simulation = SimulateEBCC(data_path=os.path.join(source_folder, data_path))
+    simulation = SimulateEBCC(data_path=os.path.join(source_folder, data_path), save_folder = destination_folder)
     simulation.set_network_configuration()
     simulation.set_nest_kernel()
     simulation.create_network()
@@ -54,7 +58,7 @@ elif condition == "w_NO":
     simulation_description = f"EBCC with A_minus, A_plus= {A_minus},{A_plus}, {condition}"
     print(simulation_description)
     vt_modality = "1_vt_pf-PC" 
-    simulation = SimulateEBCC(data_path=os.path.join(source_folder, data_path))
+    simulation = SimulateEBCC(data_path=os.path.join(source_folder, data_path), save_folder = destination_folder)
     simulation.set_network_configuration()
     simulation.set_nest_kernel()
     simulation.create_network()
@@ -66,7 +70,7 @@ elif condition == "w_NO":
     simulation.define_bg_noise(rate=noise_rate)
     simulation.define_recorders()
     nods_sim = simulation.initialize_nods(file_rel_dist)
-    simulation.simulate_network_with_NO(nods_sim)
+    simulation.simulate_network_with_NO(nods_sim, save_no)
 
 
 from datetime import datetime
@@ -94,10 +98,10 @@ readme_content = f"""# Simulation Parameters
                 {vt_modality}
                 """
 # Write the README content to a file
-with open("./aa_sim_description.md", "w") as readme_file:
+with open(os.path.join(destination_folder,"aa_sim_description.md"), "w") as readme_file:
     readme_file.write(readme_content)
 readme_file.close()
 
 
-from move_files import move_files_to_folder
-move_files_to_folder(source_folder, destination_folder, file_prefixes)
+"""from move_files import move_files_to_folder
+move_files_to_folder(source_folder, destination_folder, file_prefixes)"""
