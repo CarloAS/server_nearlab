@@ -1,6 +1,7 @@
 # NODS (Nitric Oxide Diffusion Simulator)
 
-! Download from 'Zenodo link' the folder 'data_NODS' in order to properly run the simlations'
+! Download from [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15608851.svg)](https://doi.org/10.5281/zenodo.15608851)
+ the folder 'data_NODS' in order to properly run the simlations'
 
 This repo contains all the main code to use NODS and test its applicability in NEST simulations.
 
